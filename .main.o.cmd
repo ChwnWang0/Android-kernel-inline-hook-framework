@@ -990,53 +990,6 @@ deps_/mnt/driver/main.o := \
   include/generated/uapi/linux/version.h \
   /mnt/driver/kp_hook.h \
   /mnt/driver/kp_hook.c \
-  /opt/ddk/src/android12-5.10/include/linux/stop_machine.h \
-  /opt/ddk/src/android12-5.10/include/linux/cpu.h \
-    $(wildcard include/config/pm/sleep/smp.h) \
-    $(wildcard include/config/pm/sleep/smp/nonzero/cpu.h) \
-    $(wildcard include/config/arch/has/cpu/finalize/init.h) \
-    $(wildcard include/config/hotplug/smt.h) \
-  /opt/ddk/src/android12-5.10/include/linux/node.h \
-    $(wildcard include/config/hmem/reporting.h) \
-    $(wildcard include/config/memory/hotplug/sparse.h) \
-  /opt/ddk/src/android12-5.10/include/linux/device.h \
-    $(wildcard include/config/debug/devres.h) \
-    $(wildcard include/config/energy/model.h) \
-    $(wildcard include/config/generic/msi/irq/domain.h) \
-    $(wildcard include/config/pinctrl.h) \
-    $(wildcard include/config/generic/msi/irq.h) \
-    $(wildcard include/config/dma/ops.h) \
-    $(wildcard include/config/dma/declare/coherent.h) \
-    $(wildcard include/config/dma/cma.h) \
-    $(wildcard include/config/arch/has/sync/dma/for/device.h) \
-    $(wildcard include/config/arch/has/sync/dma/for/cpu.h) \
-    $(wildcard include/config/arch/has/sync/dma/for/cpu/all.h) \
-    $(wildcard include/config/dma/ops/bypass.h) \
-    $(wildcard include/config/of.h) \
-    $(wildcard include/config/devtmpfs.h) \
-    $(wildcard include/config/sysfs/deprecated.h) \
-  /opt/ddk/src/android12-5.10/include/linux/dev_printk.h \
-  /opt/ddk/src/android12-5.10/include/linux/energy_model.h \
-  /opt/ddk/src/android12-5.10/include/linux/sched/cpufreq.h \
-    $(wildcard include/config/cpu/freq.h) \
-  /opt/ddk/src/android12-5.10/include/linux/sched/topology.h \
-    $(wildcard include/config/sched/debug.h) \
-    $(wildcard include/config/sched/mc.h) \
-  /opt/ddk/src/android12-5.10/include/linux/sched/idle.h \
-  /opt/ddk/src/android12-5.10/include/linux/sched/sd_flags.h \
-  /opt/ddk/src/android12-5.10/include/linux/klist.h \
-  /opt/ddk/src/android12-5.10/include/linux/pm.h \
-    $(wildcard include/config/vt/console/sleep.h) \
-    $(wildcard include/config/pm.h) \
-    $(wildcard include/config/pm/clk.h) \
-    $(wildcard include/config/pm/generic/domains.h) \
-  /opt/ddk/src/android12-5.10/include/linux/device/bus.h \
-    $(wildcard include/config/acpi.h) \
-  /opt/ddk/src/android12-5.10/include/linux/device/class.h \
-  /opt/ddk/src/android12-5.10/include/linux/device/driver.h \
-  /opt/ddk/src/android12-5.10/arch/arm64/include/asm/device.h \
-  /opt/ddk/src/android12-5.10/include/linux/pm_wakeup.h \
-  /opt/ddk/src/android12-5.10/include/linux/cpuhotplug.h \
   /opt/ddk/src/android12-5.10/include/linux/vmalloc.h \
   /opt/ddk/src/android12-5.10/arch/arm64/include/asm/vmalloc.h \
   /opt/ddk/src/android12-5.10/arch/arm64/include/asm/cacheflush.h \

@@ -15,10 +15,14 @@ MODULE_AUTHOR("PWY_Fixed");
 MODULE_DESCRIPTION("KernelPatch inline hook runtime port demo");
 MODULE_VERSION("2.0");
 
-static noinline int add(int a, int b)
+static __attribute__((naked)) int add(int a, int b)
 {
-    pr_info("inlinehooktest: origin add called, a=%d b=%d\n", a, b);
-    return a + b;
+    asm volatile(
+        "add w0, w0, w1\n"
+        "nop\n"
+        "nop\n"
+        "ret\n"
+    );
 }
 
 static bool panic_store_ready;
