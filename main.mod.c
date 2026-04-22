@@ -35,10 +35,6 @@ __used __section("__versions") = {
 	{ 0xcd1b966b, "vfs_fsync" },
 	{ 0x71316503, "kmsg_dump_get_line" },
 	{ 0x616b30c7, "kmsg_dump_rewind" },
-	{ 0x18b23dc5, "unregister_kprobe" },
-	{ 0x8ea54251, "unregister_kretprobe" },
-	{ 0xc502eb6d, "register_kprobe" },
-	{ 0x881262d4, "register_kretprobe" },
 	{ 0xf9a482f9, "msleep" },
 	{ 0xe2d5255a, "strcmp" },
 	{ 0x20d81059, "up_write" },
@@ -47,10 +43,14 @@ __used __section("__versions") = {
 	{ 0x2d39b0a7, "kstrdup" },
 	{ 0x6b50e951, "up_read" },
 	{ 0x3355da1c, "down_read" },
+	{ 0x8ea54251, "unregister_kretprobe" },
+	{ 0x881262d4, "register_kretprobe" },
+	{ 0x18b23dc5, "unregister_kprobe" },
+	{ 0xc502eb6d, "register_kprobe" },
 	{ 0xc5850110, "printk" },
 };
 
 MODULE_INFO(depends, "");
 
 
-MODULE_INFO(srcversion, "9687E3CD2C97F840717DE9F");
+MODULE_INFO(srcversion, "BB4896D4CB5BA1CD7BDE931");
