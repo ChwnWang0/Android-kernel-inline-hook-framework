@@ -1,0 +1,2 @@
+/mnt/driver/main.o
+
