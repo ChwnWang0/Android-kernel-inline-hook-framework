@@ -11,6 +11,12 @@
 #include <linux/kallsyms.h>
 #include <asm/cacheflush.h>
 
+/* Instruction manipulation macros */
+#define bits32(n, high, low) ((uint32_t)((n) << (31u - (high))) >> (31u - (high) + (low)))
+#define bit(n, st) (((n) >> (st)) & 1)
+#define sign64_extend(n, len) \
+    (((uint64_t)((n) << (63u - (len - 1))) >> 63u) ? ((n) | (0xFFFFFFFFFFFFFFFFULL << (len))) : (n))
+
 static const char long_jmp_code[24] =
     "\xe1\x03\xbe\xa9"
     "\x40\x00\x00\x58"
@@ -39,40 +45,221 @@ static inline void fill_long_jmp(void *fill_dest, void *hijack_to_func)
     memcpy(fill_dest + 3 * INSTRUCTION_SIZE, &hijack_to_func, sizeof(void *));
 }
 
-static bool check_instruction_can_hijack(uint32_t instruction)
+/* Relocate B/BL/B.cond instruction */
+static int relo_b(struct sym_hook *hook, uint64_t inst_addr, uint32_t inst)
 {
-    switch (instruction & 0x9f000000u) {
-    case 0x10000000u:
-    case 0x90000000u:
-        return false;
+    uint32_t *buf;
+    uint64_t imm64;
+    uint64_t addr;
+    int idx;
+    bool is_bl;
+    bool is_bc;
+    uint64_t imm19;
+    uint64_t imm26;
+
+    buf = hook->relo_insts + hook->relo_insts_num;
+    idx = 0;
+    is_bl = (inst & MASK_BL) == INST_BL;
+    is_bc = (inst & MASK_BC) == INST_BC;
+
+    if (is_bc) {
+        imm19 = bits32(inst, 23, 5);
+        imm64 = sign64_extend(imm19 << 2u, 21u);
+    } else {
+        imm26 = bits32(inst, 25, 0);
+        imm64 = sign64_extend(imm26 << 2u, 28u);
     }
-    switch (instruction & 0xfc000000u) {
-    case 0x14000000u:
-    case 0x94000000u:
-        return false;
+    addr = inst_addr + imm64;
+
+    if (is_bc) {
+        buf[idx++] = (inst & 0xFF00001F) | 0x40u; /* B.<cond> #8 */
+        buf[idx++] = 0x14000006; /* B #24 */
     }
-    switch (instruction & 0xff000000u) {
-    case 0x54000000u:
-        return false;
+    buf[idx++] = 0x58000051; /* LDR X17, #8 */
+    buf[idx++] = 0x14000003; /* B #12 */
+    buf[idx++] = addr & 0xFFFFFFFF;
+    buf[idx++] = addr >> 32u;
+    if (is_bl) {
+        buf[idx++] = 0x1000001E; /* ADR X30, . */
+        buf[idx++] = 0x910033DE; /* ADD X30, X30, #12 */
+        buf[idx++] = 0xD65F0220; /* RET X17 */
+    } else {
+        buf[idx++] = 0xD65F0220; /* RET X17 */
     }
-    switch (instruction & 0x7e000000u) {
-    case 0x34000000u:
-    case 0x36000000u:
-        return false;
+    buf[idx++] = ARM64_NOP;
+
+    hook->relo_insts_num += idx;
+    return 0;
+}
+
+/* Relocate ADR/ADRP instruction */
+static int relo_adr(struct sym_hook *hook, uint64_t inst_addr, uint32_t inst)
+{
+    uint32_t *buf;
+    uint32_t xd;
+    uint64_t immlo;
+    uint64_t immhi;
+    uint64_t addr;
+    bool is_adrp;
+
+    buf = hook->relo_insts + hook->relo_insts_num;
+    xd = bits32(inst, 4, 0);
+    immlo = bits32(inst, 30, 29);
+    immhi = bits32(inst, 23, 5);
+    is_adrp = (inst & MASK_ADRP) == INST_ADRP;
+
+    if (is_adrp) {
+        addr = (inst_addr + sign64_extend((immhi << 14u) | (immlo << 12u), 33u)) & 0xFFFFFFFFFFFFF000ULL;
+    } else {
+        addr = inst_addr + sign64_extend((immhi << 2u) | immlo, 21u);
     }
-    switch (instruction & 0xbf000000u) {
-    case 0x18000000u:
-        return false;
+
+    buf[0] = 0x58000040u | xd; /* LDR Xd, #8 */
+    buf[1] = 0x14000003; /* B #12 */
+    buf[2] = addr & 0xFFFFFFFF;
+    buf[3] = addr >> 32u;
+
+    hook->relo_insts_num += 4;
+    return 0;
+}
+
+/* Relocate LDR literal instruction */
+static int relo_ldr(struct sym_hook *hook, uint64_t inst_addr, uint32_t inst)
+{
+    uint32_t *buf;
+    uint32_t rt;
+    uint64_t imm19;
+    uint64_t offset;
+    uint64_t addr;
+    bool is_ldr32;
+    bool is_ldr64;
+    bool is_ldrsw;
+
+    buf = hook->relo_insts + hook->relo_insts_num;
+    rt = bits32(inst, 4, 0);
+    imm19 = bits32(inst, 23, 5);
+    offset = sign64_extend((imm19 << 2u), 21u);
+    addr = inst_addr + offset;
+    is_ldr32 = (inst & MASK_LDR_32) == INST_LDR_32;
+    is_ldr64 = (inst & MASK_LDR_64) == INST_LDR_64;
+    is_ldrsw = (inst & MASK_LDRSW_LIT) == INST_LDRSW_LIT;
+
+    if (is_ldr32 || is_ldr64 || is_ldrsw) {
+        buf[0] = 0x58000060u | rt; /* LDR Xt, #12 */
+        if (is_ldr32) {
+            buf[1] = 0xB9400000 | rt | (rt << 5u); /* LDR Wt, [Xt] */
+        } else if (is_ldr64) {
+            buf[1] = 0xF9400000 | rt | (rt << 5u); /* LDR Xt, [Xt] */
+        } else {
+            buf[1] = 0xB9800000 | rt | (rt << 5u); /* LDRSW Xt, [Xt] */
+        }
+        buf[2] = 0x14000004; /* B #16 */
+        buf[3] = ARM64_NOP;
+        buf[4] = addr & 0xFFFFFFFF;
+        buf[5] = addr >> 32u;
+        hook->relo_insts_num += 6;
     }
-    switch (instruction & 0x3f000000u) {
-    case 0x1c000000u:
-        return false;
+
+    return 0;
+}
+
+/* Relocate CBZ/CBNZ/TBZ/TBNZ instruction */
+static int relo_cbz(struct sym_hook *hook, uint64_t inst_addr, uint32_t inst)
+{
+    uint32_t *buf;
+    uint64_t imm19;
+    uint64_t imm64;
+    uint64_t addr;
+
+    buf = hook->relo_insts + hook->relo_insts_num;
+    imm19 = bits32(inst, 23, 5);
+    imm64 = sign64_extend(imm19 << 2u, 21u);
+    addr = inst_addr + imm64;
+
+    buf[0] = (inst & 0xFF00001F) | 0x40u; /* CBZ/CBNZ/TBZ/TBNZ #8 */
+    buf[1] = 0x14000006; /* B #24 */
+    buf[2] = 0x58000051; /* LDR X17, #8 */
+    buf[3] = 0x14000003; /* B #12 */
+    buf[4] = addr & 0xFFFFFFFF;
+    buf[5] = addr >> 32u;
+    buf[6] = 0xD65F0220; /* RET X17 */
+    buf[7] = ARM64_NOP;
+
+    hook->relo_insts_num += 8;
+    return 0;
+}
+
+/* Relocate single instruction */
+static int relo_single_inst(struct sym_hook *hook, int inst_idx)
+{
+    uint32_t inst = hook->origin_insts[inst_idx];
+    uint64_t inst_addr = (uint64_t)hook->target + inst_idx * INSTRUCTION_SIZE;
+
+    /* BTI instructions: copy as-is */
+    if (inst == ARM64_BTI_C || inst == ARM64_BTI_J || inst == ARM64_BTI_JC) {
+        hook->relo_insts[hook->relo_insts_num++] = inst;
+        return 0;
     }
-    switch (instruction & 0xff000000u) {
-    case 0x98000000u:
-        return false;
+
+    /* Check instruction type and relocate */
+    if ((inst & MASK_B) == INST_B || (inst & MASK_BL) == INST_BL || (inst & MASK_BC) == INST_BC) {
+        return relo_b(hook, inst_addr, inst);
     }
-    return true;
+    if ((inst & MASK_ADR) == INST_ADR || (inst & MASK_ADRP) == INST_ADRP) {
+        return relo_adr(hook, inst_addr, inst);
+    }
+    if ((inst & MASK_LDR_32) == INST_LDR_32 || (inst & MASK_LDR_64) == INST_LDR_64 ||
+        (inst & MASK_LDRSW_LIT) == INST_LDRSW_LIT) {
+        return relo_ldr(hook, inst_addr, inst);
+    }
+    if ((inst & MASK_CBZ) == INST_CBZ || (inst & MASK_CBNZ) == INST_CBNZ ||
+        (inst & MASK_TBZ) == INST_TBZ || (inst & MASK_TBNZ) == INST_TBNZ) {
+        return relo_cbz(hook, inst_addr, inst);
+    }
+
+    /* Non-PC-relative instruction: copy as-is */
+    hook->relo_insts[hook->relo_insts_num++] = inst;
+    return 0;
+}
+
+/* Build relocated instruction sequence */
+static int build_relo_insts(struct sym_hook *hook)
+{
+    int i;
+    uint32_t *buf;
+    uint64_t ret_addr;
+
+    hook->relo_insts_num = 0;
+    hook->tramp_insts_num = HIJACK_INST_NUM;
+
+    /* Copy original instructions */
+    for (i = 0; i < HIJACK_INST_NUM; i++) {
+        hook->origin_insts[i] = *(uint32_t *)(hook->target + i * INSTRUCTION_SIZE);
+    }
+
+    /* Relocate each instruction */
+    for (i = 0; i < HIJACK_INST_NUM; i++) {
+        if (relo_single_inst(hook, i) < 0) {
+            pr_err("kp_hook: failed to relocate instruction at offset %d\n", i * INSTRUCTION_SIZE);
+            return -1;
+        }
+    }
+
+    /* Add long jump back to original function */
+    buf = hook->relo_insts + hook->relo_insts_num;
+    ret_addr = (uint64_t)hook->target + HIJACK_SIZE;
+
+    buf[0] = 0x58000051; /* LDR X17, #8 */
+    buf[1] = 0x14000003; /* B #12 */
+    buf[2] = ret_addr & 0xFFFFFFFF;
+    buf[3] = ret_addr >> 32u;
+    buf[4] = 0xD65F0220; /* RET X17 */
+    buf[5] = ARM64_NOP;
+
+    hook->relo_insts_num += 6;
+
+    pr_info("kp_hook: built %d relocated instructions\n", hook->relo_insts_num);
+    return 0;
 }
 
 static void *follow_trampoline(void *target)
@@ -90,23 +277,6 @@ static void *follow_trampoline(void *target)
         pr_info("kp_hook: followed trampoline to %p\n", target);
     }
     return target;
-}
-
-static bool check_target_can_hijack(void *target)
-{
-    int offset;
-
-    pr_info("kp_hook: checking target at %p\n", target);
-    for (offset = 0; offset < HOOK_TARGET_OFFSET + HIJACK_SIZE; offset += INSTRUCTION_SIZE) {
-        uint32_t inst = *(uint32_t *)(target + offset);
-        pr_info("kp_hook: [%d] %08x\n", offset, inst);
-        if (!check_instruction_can_hijack(inst)) {
-            pr_err("kp_hook: instruction %x at offset %d cannot be hijacked\n",
-                inst, offset);
-            return false;
-        }
-    }
-    return true;
 }
 
 static __nocfi bool check_function_length_enough(void *target)
@@ -138,15 +308,11 @@ static __nocfi bool check_function_length_enough(void *target)
     return true;
 }
 
-static int fill_hook_template_code_space(void *hook_template_code_space,
-    void *target_code, void *return_addr)
+static int fill_hook_template_code_space(struct sym_hook *sa)
 {
-    unsigned char tmp_code[HIJACK_SIZE * 2];
-
-    memset(tmp_code, 0, sizeof(tmp_code));
-    memcpy(tmp_code, target_code, HIJACK_SIZE);
-    fill_long_jmp(tmp_code + HIJACK_SIZE, return_addr);
-    return hook_write_range(hook_template_code_space, tmp_code, sizeof(tmp_code));
+    /* Write relocated instructions to code_space */
+    int total_size = sa->relo_insts_num * INSTRUCTION_SIZE;
+    return hook_write_range(sa->hook_template_code_space, sa->relo_insts, total_size);
 }
 
 struct do_hijack_struct {
@@ -263,12 +429,6 @@ int hijack_target_prepare(void *target, void *hook_dest,
         return -1;
     }
 
-    if (hook_template_code_space && !check_target_can_hijack(target)) {
-        pr_err("kp_hook: %lx contains unhookable instructions\n",
-            (unsigned long)target);
-        return -1;
-    }
-
     down_read(&hijack_targets_hashtable_lock);
     hash_for_each_possible(all_hijack_targets, sa, node, ptr_hash) {
         if (target == sa->target) {
@@ -296,6 +456,17 @@ int hijack_target_prepare(void *target, void *hook_dest,
     sa->mod_name = name;
     sa->template_return_addr = target + HIJACK_SIZE - 1 * INSTRUCTION_SIZE;
     sa->enabled = false;
+
+    /* Build relocated instructions if code_space is provided */
+    if (hook_template_code_space) {
+        if (build_relo_insts(sa) < 0) {
+            kfree(sa->mod_name);
+            kfree(sa);
+            pr_err("kp_hook: failed to build relocated instructions for %lx\n",
+                (unsigned long)target);
+            return -1;
+        }
+    }
 
     down_write(&hijack_targets_hashtable_lock);
     hash_add(all_hijack_targets, &sa->node, ptr_hash);
@@ -331,8 +502,7 @@ int hijack_target_enable(void *target)
         if (sa->target == target) {
             if (!sa->enabled) {
                 if (sa->hook_template_code_space &&
-                    fill_hook_template_code_space(sa->hook_template_code_space,
-                        sa->target_code, sa->template_return_addr)) {
+                    fill_hook_template_code_space(sa)) {
                     goto out;
                 }
                 memcpy(source_code, sa->target_code, HIJACK_SIZE);

@@ -15,21 +15,18 @@ MODULE_AUTHOR("PWY_Fixed");
 MODULE_DESCRIPTION("KernelPatch inline hook runtime port demo");
 MODULE_VERSION("2.0");
 
-static __attribute__((naked)) int add(int a, int b)
+static noinline int add(int a, int b)
 {
-    asm volatile(
-        "add w0, w0, w1\n"
-        "nop\n"
-        "nop\n"
-        "nop\n"
-        "nop\n"
-        "nop\n"
-        "nop\n"
-        "nop\n"
-        "nop\n"
-        "nop\n"
-        "ret\n"
-    );
+    int result;
+    /* This will generate conditional branch instructions */
+    if (a > 100) {
+        pr_info("inlinehooktest: a is large: %d\n", a);
+        result = a + b + 1;
+    } else {
+        pr_info("inlinehooktest: a is normal: %d\n", a);
+        result = a + b;
+    }
+    return result;
 }
 
 static bool panic_store_ready;

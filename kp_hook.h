@@ -13,6 +13,41 @@
 
 #define DEFAULT_HASH_BUCKET_BITS 10
 
+/* Maximum relocated instructions buffer size */
+#define MAX_RELO_INSTS 64
+
+/* ARM64 instruction definitions */
+#define ARM64_NOP 0xD503201F
+#define ARM64_BTI_C 0xD503245F
+#define ARM64_BTI_J 0xD503249F
+#define ARM64_BTI_JC 0xD50324DF
+
+#define INST_B 0x14000000
+#define INST_BC 0x54000000
+#define INST_BL 0x94000000
+#define INST_ADR 0x10000000
+#define INST_ADRP 0x90000000
+#define INST_LDR_32 0x18000000
+#define INST_LDR_64 0x58000000
+#define INST_LDRSW_LIT 0x98000000
+#define INST_CBZ 0x34000000
+#define INST_CBNZ 0x35000000
+#define INST_TBZ 0x36000000
+#define INST_TBNZ 0x37000000
+
+#define MASK_B 0xFC000000
+#define MASK_BC 0xFF000010
+#define MASK_BL 0xFC000000
+#define MASK_ADR 0x9F000000
+#define MASK_ADRP 0x9F000000
+#define MASK_LDR_32 0xFF000000
+#define MASK_LDR_64 0xFF000000
+#define MASK_LDRSW_LIT 0xFF000000
+#define MASK_CBZ 0x7F000000u
+#define MASK_CBNZ 0x7F000000u
+#define MASK_TBZ 0x7F000000u
+#define MASK_TBNZ 0x7F000000u
+
 #define jhash_pointer(pointer) jhash((&pointer), sizeof(pointer), 0x95279527)
 
 struct sym_hook {
@@ -25,6 +60,12 @@ struct sym_hook {
     bool enabled;
     struct hlist_node node;
     unsigned char target_code[HIJACK_SIZE];
+
+    /* Relocation support */
+    uint32_t origin_insts[HIJACK_INST_NUM];
+    uint32_t relo_insts[MAX_RELO_INSTS];
+    int relo_insts_num;
+    int tramp_insts_num;
 };
 
 #define HOOK_FUNC_TEMPLATE(s) \
