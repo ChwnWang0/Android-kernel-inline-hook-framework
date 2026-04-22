@@ -21,6 +21,13 @@ static __attribute__((naked)) int add(int a, int b)
         "add w0, w0, w1\n"
         "nop\n"
         "nop\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
         "ret\n"
     );
 }
@@ -29,16 +36,15 @@ static bool panic_store_ready;
 static bool kp_hook_ready;
 static bool add_hook_installed;
 
-static void before_add(hook_fargs2_t *args, void *udata)
+HOOK_FUNC_TEMPLATE(add);
+static __nocfi __attribute__((used)) int hook_add(int a, int b)
 {
-    pr_info("inlinehooktest: before add arg0=%llu arg1=%llu\n", args->arg0, args->arg1);
-    args->local.data0 = args->arg0 + args->arg1;
-}
+    int (*origin_add)(int, int);
 
-static void after_add(hook_fargs2_t *args, void *udata)
-{
-    pr_info("inlinehooktest: after add ret=%llu cached_sum=%llu\n", args->ret, args->local.data0);
-    args->ret = 100;
+    pr_info("inlinehooktest: hook_add called with %d + %d\n", a, b);
+
+    origin_add = (int (*)(int, int))GET_CODESPACE_ADDERSS(add);
+    return origin_add(a, b);
 }
 
 static bool is_panic;
@@ -49,8 +55,6 @@ static ssize_t (*kernel_write_ptr)(struct file *, const void *, size_t, loff_t *
 static int (*aarch64_insn_write_ptr)(void *, u32);
 static void (*flush_icache_range_ptr)(unsigned long, unsigned long);
 typedef unsigned long (*main_kallsyms_lookup_name_t)(const char *);
-
-#define INSTRUCTION_SIZE 4
 
 #ifdef CONFIG_CFI_CLANG
 #define NO_CFI __nocfi
@@ -349,7 +353,6 @@ static int disable_kprobe_blacklist(void)
 
 static int __init inline_hook_demo_init(void)
 {
-    hook_err_t err;
     int ret;
 
     ret = panic_store_register();
@@ -384,9 +387,18 @@ static int __init inline_hook_demo_init(void)
     ret = add(20, 10);
     pr_info("inlinehooktest: before hook 20 + 10 = %d\n", ret);
 
-    err = hook_wrap2((void *)add, before_add, after_add, NULL);
-    if (err != HOOK_NO_ERR) {
-        pr_err("inlinehooktest: hook_wrap2 failed: %d\n", err);
+    ret = HIJACK_TARGET_PREP_HOOK((void *)add, add);
+    if (ret) {
+        pr_err("inlinehooktest: hijack_target_prepare failed: %d\n", ret);
+        kp_hook_runtime_exit();
+        kp_hook_ready = false;
+        panic_store_unregister();
+        return -EINVAL;
+    }
+
+    ret = hijack_target_enable((void *)add);
+    if (ret) {
+        pr_err("inlinehooktest: hijack_target_enable failed: %d\n", ret);
         kp_hook_runtime_exit();
         kp_hook_ready = false;
         panic_store_unregister();
@@ -405,7 +417,7 @@ static void __exit inline_hook_demo_exit(void)
     int ret;
 
     if (add_hook_installed) {
-        hook_unwrap((void *)add, before_add, after_add);
+        hijack_target_disable((void *)add, true);
         add_hook_installed = false;
     }
 
