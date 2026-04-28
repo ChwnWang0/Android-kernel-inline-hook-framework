@@ -9,6 +9,11 @@
 
 ---
 
+> [!WARNING]
+> 本项目仅供学习研究与安全测试使用，请在可控的测试环境中运行。
+> 严禁将本项目用于任何非法用途或未经授权的设备上。
+> 使用者需自行承担一切法律责任，作者不对任何滥用行为负责。
+
 ## 简介
 
 基于 [kernel-inline-hook-framework](https://github.com/AnyKernel3/kernel-inline-hook-framework) 和 [KernelPatch](https://github.com/bmax121/KernelPatch) 移植的 ARM64 内核 inline hook 框架。
