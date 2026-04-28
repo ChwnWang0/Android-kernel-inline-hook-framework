@@ -3,15 +3,15 @@
 
 #include <linux/types.h>
 
-/* Architecture-specific helper functions */
+/* 架构相关辅助函数 */
 
-/* Lookup kernel symbol by name */
+/* 通过名称查找内核符号地址 */
 unsigned long kallsyms_lookup_name_ex(const char *name);
 
-/* Write instruction to read-only memory */
+/* 向只读内存写入指令 */
 int hook_write_range(void *target, void *source, int size);
 
-/* Initialize architecture-specific functions */
+/* 初始化架构相关函数 */
 int arch_helper_init(void);
 
 #endif

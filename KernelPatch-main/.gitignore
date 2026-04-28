@@ -1,9 +1,0 @@
-.vscode/*
-.history/
-.claude
-**/.DS_Store
-
-build
-
-test
-script

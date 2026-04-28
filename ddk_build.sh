@@ -51,8 +51,8 @@ sudo docker run --rm \
             modules -j\$(nproc)
     "
 
-KO="$DRIVER_SRC/main.ko"
-[[ -f "$KO" ]] && cp "$KO" "$DRIVER_SRC/${VERSION}main.ko" && echo "✅ 产物: $DRIVER_SRC/${VERSION}main.ko" || echo "❌ 编译失败"
+KO="$DRIVER_SRC/inlinehook.ko"
+[[ -f "$KO" ]] && cp "$KO" "$DRIVER_SRC/${VERSION}inlinehook.ko" && echo "✅ 产物: $DRIVER_SRC/${VERSION}inlinehook.ko" || echo "❌ 编译失败"
 
 
 chmod 777 -R *

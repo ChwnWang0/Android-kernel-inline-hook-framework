@@ -5,14 +5,14 @@
 #include "inline_hook.h"
 #include "arch_helper.h"
 #include "bypass.h"
-#include "panic_logger.h"
+#include "hook_vfs_read_test.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("PWY");
 MODULE_DESCRIPTION("ARM64 inline hook framework with instruction relocation");
 MODULE_VERSION("3.0");
 
-/* ---- Test target function ---- */
+/* ---- 测试目标函数 ---- */
 
 static noinline int add(int a, int b)
 {
@@ -27,10 +27,11 @@ static noinline int add(int a, int b)
     return result;
 }
 
-/* ---- Hook function ---- */
+/* ---- Hook 函数 ---- */
 
 static bool hook_ready;
 static bool add_hook_installed;
+static bool vfs_read_hook_installed;
 
 HOOK_FUNC_TEMPLATE(add);
 static __nocfi __attribute__((used)) int hook_add(int a, int b)
@@ -43,17 +44,11 @@ static __nocfi __attribute__((used)) int hook_add(int a, int b)
     return origin_add(a, b);
 }
 
-/* ---- Module init/exit ---- */
+/* ---- 模块初始化/退出 ---- */
 
 static int __init inline_hook_demo_init(void)
 {
     int ret;
-
-    ret = panic_logger_init();
-    if (ret) {
-        pr_err("main: panic_logger_init failed: %d\n", ret);
-        return ret;
-    }
 
     ret = disable_kprobe_blacklist();
     if (ret)
@@ -62,7 +57,6 @@ static int __init inline_hook_demo_init(void)
     ret = arch_helper_init();
     if (ret) {
         pr_err("main: arch_helper_init failed: %d\n", ret);
-        panic_logger_exit();
         return ret;
     }
 
@@ -71,12 +65,11 @@ static int __init inline_hook_demo_init(void)
     ret = inline_hook_init();
     if (ret) {
         pr_err("main: inline_hook_init failed: %d\n", ret);
-        panic_logger_exit();
         return ret;
     }
     hook_ready = true;
 
-    /* Test: hook the add function */
+    /* 测试：hook add 函数 */
     ret = add(20, 10);
     pr_info("main: before hook 20 + 10 = %d\n", ret);
 
@@ -96,18 +89,29 @@ static int __init inline_hook_demo_init(void)
     ret = add(20, 10);
     pr_info("main: after hook 20 + 10 = %d\n", ret);
 
+    /* Hook vfs_read 函数 */
+    ret = hook_vfs_read_init();
+    if (ret)
+        pr_warn("main: hook_vfs_read_init failed: %d (non-fatal)\n", ret);
+    else
+        vfs_read_hook_installed = true;
+
     return 0;
 
 fail_hook:
     inline_hook_exit();
     hook_ready = false;
-    panic_logger_exit();
     return -EINVAL;
 }
 
 static void __exit inline_hook_demo_exit(void)
 {
     int ret;
+
+    if (vfs_read_hook_installed) {
+        hook_vfs_read_exit();
+        vfs_read_hook_installed = false;
+    }
 
     if (add_hook_installed) {
         hijack_target_disable((void *)add, true);
@@ -121,14 +125,7 @@ static void __exit inline_hook_demo_exit(void)
         inline_hook_exit();
         hook_ready = false;
     }
-
-    panic_logger_exit();
 }
 
 module_init(inline_hook_demo_init);
 module_exit(inline_hook_demo_exit);
-
-#include "arch_helper.c"
-#include "bypass.c"
-#include "panic_logger.c"
-#include "inline_hook.c"

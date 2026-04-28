@@ -1,12 +1,12 @@
 #ifndef BYPASS_H
 #define BYPASS_H
 
-/* Security protection bypass functions */
+/* 安全保护绕过函数 */
 
-/* Bypass CFI (Control Flow Integrity) checks */
+/* 绕过 CFI (控制流完整性) 检查 */
 int bypass_cfi(void);
 
-/* Disable kprobe blacklist to allow hooking restricted functions */
+/* 禁用 kprobe 黑名单，允许 hook 受限函数 */
 int disable_kprobe_blacklist(void);
 
 #endif

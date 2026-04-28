@@ -13,10 +13,10 @@
 
 #define DEFAULT_HASH_BUCKET_BITS 10
 
-/* Maximum relocated instructions buffer size */
+/* 重定位指令缓冲区最大长度 */
 #define MAX_RELO_INSTS 64
 
-/* ARM64 instruction definitions */
+/* ARM64 指令定义 */
 #define ARM64_NOP 0xD503201F
 #define ARM64_BTI_C 0xD503245F
 #define ARM64_BTI_J 0xD503249F
@@ -61,7 +61,7 @@ struct sym_hook {
     struct hlist_node node;
     unsigned char target_code[HIJACK_SIZE];
 
-    /* Relocation support */
+    /* 重定位支持 */
     uint32_t origin_insts[HIJACK_INST_NUM];
     uint32_t relo_insts[MAX_RELO_INSTS];
     int relo_insts_num;
@@ -124,7 +124,7 @@ asm ( \
         NULL, GET_HOOK_FUNC_ADDRESS(fn), \
         module_name(THIS_MODULE))
 
-/* Inline hook runtime API */
+/* Inline hook 运行时 API */
 int inline_hook_init(void);
 void inline_hook_exit(void);
 

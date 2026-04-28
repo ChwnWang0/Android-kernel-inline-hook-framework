@@ -12,7 +12,7 @@
 #include <linux/kallsyms.h>
 #include <asm/cacheflush.h>
 
-/* Instruction manipulation macros */
+/* 指令操作宏 */
 #define bits32(n, high, low) ((uint32_t)((n) << (31u - (high))) >> (31u - (high) + (low)))
 #define bit(n, st) (((n) >> (st)) & 1)
 #define sign64_extend(n, len) \
@@ -46,7 +46,7 @@ static inline void fill_long_jmp(void *fill_dest, void *hijack_to_func)
     memcpy(fill_dest + 3 * INSTRUCTION_SIZE, &hijack_to_func, sizeof(void *));
 }
 
-/* Relocate B/BL/B.cond instruction */
+/* 重定位 B/BL/B.cond 指令 */
 static int relo_b(struct sym_hook *hook, uint64_t inst_addr, uint32_t inst)
 {
     uint32_t *buf;
@@ -93,7 +93,7 @@ static int relo_b(struct sym_hook *hook, uint64_t inst_addr, uint32_t inst)
     return 0;
 }
 
-/* Relocate ADR/ADRP instruction */
+/* 重定位 ADR/ADRP 指令 */
 static int relo_adr(struct sym_hook *hook, uint64_t inst_addr, uint32_t inst)
 {
     uint32_t *buf;
@@ -124,7 +124,7 @@ static int relo_adr(struct sym_hook *hook, uint64_t inst_addr, uint32_t inst)
     return 0;
 }
 
-/* Relocate LDR literal instruction */
+/* 重定位 LDR literal 指令 */
 static int relo_ldr(struct sym_hook *hook, uint64_t inst_addr, uint32_t inst)
 {
     uint32_t *buf;
@@ -164,7 +164,7 @@ static int relo_ldr(struct sym_hook *hook, uint64_t inst_addr, uint32_t inst)
     return 0;
 }
 
-/* Relocate CBZ/CBNZ/TBZ/TBNZ instruction */
+/* 重定位 CBZ/CBNZ/TBZ/TBNZ 指令 */
 static int relo_cbz(struct sym_hook *hook, uint64_t inst_addr, uint32_t inst)
 {
     uint32_t *buf;
@@ -190,19 +190,19 @@ static int relo_cbz(struct sym_hook *hook, uint64_t inst_addr, uint32_t inst)
     return 0;
 }
 
-/* Relocate single instruction */
+/* 重定位单条指令 */
 static int relo_single_inst(struct sym_hook *hook, int inst_idx)
 {
     uint32_t inst = hook->origin_insts[inst_idx];
     uint64_t inst_addr = (uint64_t)hook->target + inst_idx * INSTRUCTION_SIZE;
 
-    /* BTI instructions: copy as-is */
+    /* BTI 指令：直接复制 */
     if (inst == ARM64_BTI_C || inst == ARM64_BTI_J || inst == ARM64_BTI_JC) {
         hook->relo_insts[hook->relo_insts_num++] = inst;
         return 0;
     }
 
-    /* Check instruction type and relocate */
+    /* 检查指令类型并重定位 */
     if ((inst & MASK_B) == INST_B || (inst & MASK_BL) == INST_BL || (inst & MASK_BC) == INST_BC) {
         return relo_b(hook, inst_addr, inst);
     }
@@ -218,12 +218,12 @@ static int relo_single_inst(struct sym_hook *hook, int inst_idx)
         return relo_cbz(hook, inst_addr, inst);
     }
 
-    /* Non-PC-relative instruction: copy as-is */
+    /* 非 PC 相对指令：直接复制 */
     hook->relo_insts[hook->relo_insts_num++] = inst;
     return 0;
 }
 
-/* Build relocated instruction sequence */
+/* 构建重定位指令序列 */
 static int build_relo_insts(struct sym_hook *hook)
 {
     int i;
@@ -233,12 +233,12 @@ static int build_relo_insts(struct sym_hook *hook)
     hook->relo_insts_num = 0;
     hook->tramp_insts_num = HIJACK_INST_NUM;
 
-    /* Copy original instructions */
+    /* 复制原始指令 */
     for (i = 0; i < HIJACK_INST_NUM; i++) {
         hook->origin_insts[i] = *(uint32_t *)(hook->target + i * INSTRUCTION_SIZE);
     }
 
-    /* Relocate each instruction */
+    /* 逐条重定位指令 */
     for (i = 0; i < HIJACK_INST_NUM; i++) {
         if (relo_single_inst(hook, i) < 0) {
             pr_err("inline_hook: failed to relocate instruction at offset %d\n", i * INSTRUCTION_SIZE);
@@ -246,7 +246,7 @@ static int build_relo_insts(struct sym_hook *hook)
         }
     }
 
-    /* Add long jump back to original function */
+    /* 添加跳回原函数的长跳转 */
     buf = hook->relo_insts + hook->relo_insts_num;
     ret_addr = (uint64_t)hook->target + HIJACK_SIZE;
 
@@ -311,7 +311,7 @@ static __nocfi bool check_function_length_enough(void *target)
 
 static int fill_hook_template_code_space(struct sym_hook *sa)
 {
-    /* Write relocated instructions to code_space */
+    /* 将重定位后的指令写入 code_space */
     int total_size = sa->relo_insts_num * INSTRUCTION_SIZE;
     return hook_write_range(sa->hook_template_code_space, sa->relo_insts, total_size);
 }
@@ -458,7 +458,7 @@ int hijack_target_prepare(void *target, void *hook_dest,
     sa->template_return_addr = target + HIJACK_SIZE - 1 * INSTRUCTION_SIZE;
     sa->enabled = false;
 
-    /* Build relocated instructions if code_space is provided */
+    /* 如果提供了 code_space，则构建重定位指令 */
     if (hook_template_code_space) {
         if (build_relo_insts(sa) < 0) {
             kfree(sa->mod_name);
