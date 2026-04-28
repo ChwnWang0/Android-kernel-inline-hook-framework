@@ -16,7 +16,7 @@
 
 ## 简介
 
-基于 [kernel-inline-hook-framework](https://github.com/AnyKernel3/kernel-inline-hook-framework) 和 [KernelPatch](https://github.com/bmax121/KernelPatch) 移植的 ARM64 内核 inline hook 框架。
+基于 [kernel-inline-hook-framework](https://github.com/WeiJiLab/kernel-inline-hook-framework) 和 [KernelPatch](https://github.com/bmax121/KernelPatch) 移植的 ARM64 内核 inline hook 框架。
 
 可以 hook 包含任意 PC 相对指令的内核函数，自动完成指令重定位，无需手动处理。
 
@@ -227,5 +227,5 @@ void my_hook_exit(void)
 
 ## 致谢
 
-- [kernel-inline-hook-framework](https://github.com/AnyKernel3/kernel-inline-hook-framework) — hijack 架构设计
+- [kernel-inline-hook-framework](https://github.com/WeiJiLab/kernel-inline-hook-framework) — hijack 架构设计
 - [KernelPatch](https://github.com/bmax121/KernelPatch) — 指令重定位实现参考
