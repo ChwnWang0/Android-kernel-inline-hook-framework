@@ -1,3 +1,13 @@
+/*
+ * @Author: 野生指针 <1703214369@qq.com>
+ * @Date: 2026-04-22 12:35:10
+ * @LastEditors: 野生指针 <1703214369@qq.com>
+ * @LastEditTime: 2026-04-28 23:40:26
+ * @FilePath: /inlinehooktest/arch_helper.c
+ * @Description: 联系我QQ 1703214369
+ * 
+ * Copyright (c) 2026 by 野生指针 <1703214369@qq.com>, All Rights Reserved. 
+ */
 #include "arch_helper.h"
 #include <linux/kprobes.h>
 #include <linux/kernel.h>

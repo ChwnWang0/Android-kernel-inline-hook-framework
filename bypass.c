@@ -1,3 +1,13 @@
+/*
+ * @Author: 野生指针 <1703214369@qq.com>
+ * @Date: 2026-04-21 23:32:40
+ * @LastEditors: 野生指针 <1703214369@qq.com>
+ * @LastEditTime: 2026-04-28 23:39:44
+ * @FilePath: /inlinehooktest/bypass.c
+ * @Description: 联系我QQ 1703214369
+ * 
+ * Copyright (c) 2026 by 野生指针 <1703214369@qq.com>, All Rights Reserved. 
+ */
 #include "bypass.h"
 #include "arch_helper.h"
 #include <linux/kernel.h>

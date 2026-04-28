@@ -218,7 +218,7 @@ void my_hook_exit(void)
 
 ## License
 
-[GPL-2.0](LICENSE)
+[GPL-2.0](https://www.gnu.org/licenses/old-licenses/gpl-2.0.zh-cn.html)
 
 ## 致谢
 

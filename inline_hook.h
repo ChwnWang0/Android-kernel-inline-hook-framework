@@ -1,3 +1,13 @@
+/*
+ * @Author: 野生指针 <1703214369@qq.com>
+ * @Date: 2026-04-19 13:51:13
+ * @LastEditors: 野生指针 <1703214369@qq.com>
+ * @LastEditTime: 2026-04-28 23:38:39
+ * @FilePath: /inlinehooktest/inline_hook.h
+ * @Description: 联系我QQ 1703214369
+ * 
+ * Copyright (c) 2026 by 野生指针 <1703214369@qq.com>, All Rights Reserved. 
+ */
 #ifndef INLINE_HOOK_H
 #define INLINE_HOOK_H
 
